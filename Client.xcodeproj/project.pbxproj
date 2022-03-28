@@ -8201,6 +8201,8 @@
 			);
 			inputPaths = (
 				"$(SRCROOT)/Client/metrics.yaml",
+				"$(SRCROOT)/SyncTelemetry/metrics.yaml",
+				"$(SRCROOT)/SyncTelemetry/pings.yaml",
 			);
 			name = "Glean SDK Generator Script";
 			outputFileListPaths = (
