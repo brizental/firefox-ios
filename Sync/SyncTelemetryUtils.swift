@@ -384,3 +384,72 @@ public struct SyncPing: SyncTelemetryPing {
         }
     }
 }
+
+public class GleanSyncOperationHelper {
+    public init () {}
+
+    public func start() {
+        GleanMetrics.Sync.syncUuid.generateAndSet()
+    }
+
+    public func end(_ result: SyncOperationResult) {
+        if let engineResults = result.engineResults.successValue {
+            engineResults.forEach { result in
+                let (name, status) = result
+                switch status {
+                case .completed(let stats):
+                    self.submitPingPerEngine(name, stats)
+                case .partial(let stats):
+                    self.submitPingPerEngine(name, stats)
+                case .notStarted(let reason):
+                    ()
+                    // failure_reason would be recorded here for the temp-<engine>-sync pings
+                }
+            }
+        } else if let failure = result.engineResults.failureValue {
+            // failure_reason would be recorded here for the temp-sync ping
+        }
+        
+        GleanMetrics.Pings.tempSync.submit()
+    }
+    
+    private func submitPingPerEngine(_ engineName: String, _ stats: SyncEngineStatsSession) {
+        // Create maps on labels to stat value,
+        // keeping only the values that are above zero.
+        //
+        // If we attempt to add 0 to a Glean counter,
+        // Glean will record an error. We don't want that here.
+        let incomingLabelsToValue = [
+            // TODO: What is the difference between applied and succeeded?
+            ("applied", stats.downloadStats.applied + stats.downloadStats.succeeded),
+            ("reconciled", stats.downloadStats.reconciled),
+            // TODO: What is the difference between failed and newFailed?
+            ("failed_to_apply", stats.downloadStats.failed + stats.downloadStats.newFailed)
+        ].filter { (_, stat) in stat > 0 }
+        let outgoingLabelsToValue = [
+            ("uploaded", stats.uploadStats.sent),
+            ("failed_to_upload", stats.uploadStats.sentFailed)
+        ].filter { (_, stat) in stat > 0 }
+        
+        switch engineName {
+        case "tabs":
+            incomingLabelsToValue.forEach{ (l, v) in GleanMetrics.TabsSync.incoming[l].add(Int32(v))}
+            outgoingLabelsToValue.forEach{ (l, v) in GleanMetrics.TabsSync.outgoing[l].add(Int32(v)) }
+            GleanMetrics.Pings.tempTabsSync.submit()
+        case "bookmarks":
+            incomingLabelsToValue.forEach{ (l, v) in GleanMetrics.BookmarksSync.incoming[l].add(Int32(v))}
+            outgoingLabelsToValue.forEach{ (l, v) in GleanMetrics.BookmarksSync.outgoing[l].add(Int32(v)) }
+            GleanMetrics.Pings.tempBookmarksSync.submit()
+        case "history":
+            incomingLabelsToValue.forEach{ (l, v) in GleanMetrics.HistorySync.incoming[l].add(Int32(v))}
+            outgoingLabelsToValue.forEach{ (l, v) in GleanMetrics.HistorySync.outgoing[l].add(Int32(v)) }
+            GleanMetrics.Pings.tempHistorySync.submit()
+        case "logins":
+            incomingLabelsToValue.forEach{ (l, v) in GleanMetrics.LoginsSync.incoming[l].add(Int32(v))}
+            outgoingLabelsToValue.forEach{ (l, v) in GleanMetrics.LoginsSync.outgoing[l].add(Int32(v)) }
+            GleanMetrics.Pings.tempLoginsSync.submit()
+        default:
+            ()
+        }
+    }
+}

@@ -1161,11 +1161,14 @@ open class BrowserProfile: Profile {
                     return self.syncWith(synchronizers: remaining, statsSession: statsSession, why: why) >>== { deferMaybe(statuses + $0) }
                 }
 
+                let gleanHelper = GleanSyncOperationHelper()
+
                 reducer.terminal.upon { results in
                     let result = SyncOperationResult(
                         engineResults: results,
                         stats: statsSession.hasStarted() ? statsSession.end() : nil
                     )
+                    gleanHelper.end(result)
                     self.endSyncing(result)
                 }
 
@@ -1173,6 +1176,7 @@ open class BrowserProfile: Profile {
                 // the synchronizers to the reducer below.
                 self.syncReducer = reducer
                 self.beginSyncing()
+                gleanHelper.start()
             }
 
             do {
@@ -1229,6 +1233,7 @@ open class BrowserProfile: Profile {
                 let thunks = synchronizers.map { (i, f) in
                     return { () -> Deferred<Maybe<EngineStatus>> in
                         log.debug("Syncing \(i)…")
+                        // Start Syncing
                         return f(delegate, syncPrefs, ready, why) >>== { deferMaybe((i, $0)) }
                     }
                 }
