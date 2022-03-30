@@ -4,6 +4,7 @@
 
 import Foundation
 import Storage
+import Shared
 
 /// The filtered jumpBack in list to display to the user.
 /// Only one group is displayed
