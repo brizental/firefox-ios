@@ -3,6 +3,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0
 
 import UIKit
+import Glean
 import Shared
 import Account
 import Storage
@@ -389,7 +390,7 @@ public class GleanSyncOperationHelper {
     public init () {}
 
     public func start() {
-        GleanMetrics.Sync.syncUuid.generateAndSet()
+        _ = GleanMetrics.Sync.syncUuid.generateAndSet()
     }
 
     public func end(_ result: SyncOperationResult) {
@@ -401,16 +402,16 @@ public class GleanSyncOperationHelper {
                     self.submitPingPerEngine(name, stats)
                 case .partial(let stats):
                     self.submitPingPerEngine(name, stats)
-                case .notStarted(let reason):
+                case .notStarted(_):
                     ()
                     // failure_reason would be recorded here for the temp-<engine>-sync pings
                 }
             }
-        } else if let failure = result.engineResults.failureValue {
+        } else if result.engineResults.failureValue != nil {
             // failure_reason would be recorded here for the temp-sync ping
         }
         
-        GleanMetrics.Pings.tempSync.submit()
+        GleanMetrics.Pings.shared.tempSync.submit()
     }
     
     private func submitPingPerEngine(_ engineName: String, _ stats: SyncEngineStatsSession) {
@@ -435,19 +436,19 @@ public class GleanSyncOperationHelper {
         case "tabs":
             incomingLabelsToValue.forEach{ (l, v) in GleanMetrics.TabsSync.incoming[l].add(Int32(v))}
             outgoingLabelsToValue.forEach{ (l, v) in GleanMetrics.TabsSync.outgoing[l].add(Int32(v)) }
-            GleanMetrics.Pings.tempTabsSync.submit()
+            GleanMetrics.Pings.shared.tempTabsSync.submit()
         case "bookmarks":
             incomingLabelsToValue.forEach{ (l, v) in GleanMetrics.BookmarksSync.incoming[l].add(Int32(v))}
             outgoingLabelsToValue.forEach{ (l, v) in GleanMetrics.BookmarksSync.outgoing[l].add(Int32(v)) }
-            GleanMetrics.Pings.tempBookmarksSync.submit()
+            GleanMetrics.Pings.shared.tempBookmarksSync.submit()
         case "history":
             incomingLabelsToValue.forEach{ (l, v) in GleanMetrics.HistorySync.incoming[l].add(Int32(v))}
             outgoingLabelsToValue.forEach{ (l, v) in GleanMetrics.HistorySync.outgoing[l].add(Int32(v)) }
-            GleanMetrics.Pings.tempHistorySync.submit()
+            GleanMetrics.Pings.shared.tempHistorySync.submit()
         case "logins":
             incomingLabelsToValue.forEach{ (l, v) in GleanMetrics.LoginsSync.incoming[l].add(Int32(v))}
             outgoingLabelsToValue.forEach{ (l, v) in GleanMetrics.LoginsSync.outgoing[l].add(Int32(v)) }
-            GleanMetrics.Pings.tempLoginsSync.submit()
+            GleanMetrics.Pings.shared.tempLoginsSync.submit()
         default:
             ()
         }
